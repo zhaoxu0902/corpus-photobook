@@ -129,66 +129,6 @@
   const manager = new THREE.LoadingManager();
   const texLoader = new THREE.TextureLoader(manager);
   const failed = [];
-
-  // Cold-start retry: on a fresh CDN edge a handful of simultaneous image
-  // requests can be reset before the asset is warmed. Retry the same <img>
-  // with backoff so the texture (and LoadingManager) still resolve.
-  (function () {
-    const proto = THREE.ImageLoader.prototype;
-    proto.load = function (url, onLoad, onProgress, onError) {
-      if (this.path !== undefined) url = this.path + url;
-      url = this.resolveURL(url);
-      const scope = this;
-      const cached = THREE.Cache.get(url);
-      if (cached !== undefined) {
-        this.manager.itemStart(url);
-        setTimeout(() => { if (onLoad) onLoad(cached); scope.manager.itemEnd(url); }, 0);
-        return cached;
-      }
-      const image = document.createElementNS("http://www.w3.org/1999/xhtml", "img");
-      let tries = 0;
-      function removeListeners() {
-        image.removeEventListener("load", onImageLoad);
-        image.removeEventListener("error", onImageError);
-      }
-      function onImageLoad() {
-        removeListeners();
-        THREE.Cache.add(url, image);
-        if (onLoad) onLoad(image);
-        scope.manager.itemEnd(url);
-      }
-      function onImageError(event) {
-        tries++;
-        if (tries <= 6) {
-          const bust = url + (url.indexOf("?") >= 0 ? "&" : "?") + "retry=" + tries;
-          setTimeout(() => {
-            if (url.indexOf("data:") !== 0) image.src = bust;
-            else image.src = url;
-          }, 350 * tries);
-          return;
-        }
-        removeListeners();
-        if (onError) onError(event);
-        scope.manager.itemError(url);
-        scope.manager.itemEnd(url);
-      }
-      image.addEventListener("load", onImageLoad);
-      image.addEventListener("error", onImageError);
-      if (url.indexOf("data:") === 0) {
-        image.src = url;
-      } else if (this.crossOrigin === "use-credentials") {
-        image.crossOrigin = "use-credentials";
-        image.src = url;
-      } else if (this.crossOrigin === "anonymous") {
-        image.crossOrigin = "anonymous";
-        image.src = url;
-      } else {
-        image.src = url;
-      }
-      this.manager.itemStart(url);
-      return image;
-    };
-  })();
   manager.onProgress = (url, n, total) => {
     $("#bar").style.width = Math.round((n / total) * 100) + "%";
     $("#loadtext").textContent = `Loading pages ${n} / ${total}`;
