@@ -133,12 +133,7 @@
     $("#bar").style.width = Math.round((n / total) * 100) + "%";
     $("#loadtext").textContent = `Loading pages ${n} / ${total}`;
   };
-  manager.onError = (url) => {
-    failed.push(url);
-    let d = document.getElementById("debug-fail");
-    if (!d) { d = document.createElement("div"); d.id = "debug-fail"; d.style.display = "none"; document.body.appendChild(d); }
-    d.setAttribute("data-urls", JSON.stringify(failed));
-  };
+  manager.onError = (url) => failed.push(url);
   function tex(url, srgb, repeat) {
     const t = texLoader.load(url);
     t.anisotropy = maxAniso;
